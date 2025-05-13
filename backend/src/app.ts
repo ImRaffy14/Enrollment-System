@@ -10,7 +10,7 @@ import requestLogger from './middlewares/logger';
 
 const app = express();
 
-const allowedOrigins = ['http://localhost:3003'];
+const allowedOrigins = ['http://localhost:3003', 'https://enrollment-sms.imraffydev.com'];
 
 app.use(cors({
     origin: allowedOrigins,

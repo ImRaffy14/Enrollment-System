@@ -5,6 +5,9 @@ import MainLayout from "./layouts/MainLayout";
 import UserManagement from "./pages/UserManagement";
 import ApplicationManagement from "./pages/Application";
 import RegistrarManagement from "./pages/Registrar";
+import SchoolSuppliesAgreement from "./pages/SchoolSuppliesAgreement";
+import StudentApplicationForm from "./pages/StudentApplicationForm";
+import Admission from "./pages/Admission";
 import WithSocket from "./components/WithSocket";
 import FullPageLoader from "./components/FullpageLoader";
 import { Toaster } from "react-hot-toast";
@@ -62,6 +65,12 @@ function App() {
       public: true, 
       element: user ? <Navigate to="/" replace /> : <Login /> 
     },
+    { 
+      path: "/studentApplication", 
+      public: true, 
+      element: <StudentApplicationForm /> 
+    },
+
 
     // Protected Routes
     {
@@ -85,9 +94,19 @@ function App() {
           element: <ApplicationManagement />,
           roles: ["ADMIN"] 
         },
-                { 
+        { 
           path: "registrar", 
           element: <RegistrarManagement />,
+          roles: ["ADMIN"] 
+        },
+        { 
+          path: "admission", 
+          element: <Admission />,
+          roles: ["ADMIN"] 
+        },
+        { 
+          path: "schoolSuppliesAgreement", 
+          element: <SchoolSuppliesAgreement />,
           roles: ["ADMIN"] 
         },
       ],

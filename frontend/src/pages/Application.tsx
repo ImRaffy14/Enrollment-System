@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Search, Filter, MoreVertical, Edit, Trash2, Eye, UserPlus, Loader2, FileText } from "lucide-react"
 

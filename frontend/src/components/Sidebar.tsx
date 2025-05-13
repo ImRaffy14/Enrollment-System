@@ -4,6 +4,10 @@ import {
   BarChart3, 
   LogOut, 
   Menu,
+  AppWindow,
+  FileSliders,
+  FileStack,
+  Handshake
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from '@/components/ui/button';
@@ -23,6 +27,10 @@ function Sidebar() {
   ];
 
   const adminMenuItems = [
+    { id: "application", path: "/application", icon: <AppWindow size={20} />, label: "Student Application" },
+    { id: "admission", path: "/admission", icon: <FileSliders size={20} />, label: "Admission" },
+    { id: "registrar", path: "/registrar", icon: <FileStack size={20} />, label: "Registrar" },
+    { id: "schoolSuppliesAgreement", path: "/schoolSuppliesAgreement", icon: <Handshake size={20} />, label: "School Supplies Agreement" },
     { id: "users", path: "/users", icon: <Users size={20} />, label: "Users" },
   ];
 
