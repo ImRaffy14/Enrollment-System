@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Search, Filter, MoreVertical, Edit, Trash2, Eye, UserPlus, Loader2, FileText } from "lucide-react"
+import { Search, Filter, MoreVertical, Edit, Trash2, Eye, Loader2, FileText } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"

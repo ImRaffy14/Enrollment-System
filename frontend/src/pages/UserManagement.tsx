@@ -63,7 +63,6 @@ const UserManagement = () => {
   const {
     data: usersData,
     isLoading,
-    isError,
     refetch,
   } = useQuery<User[], Error>({
     queryKey: ["users"],
