@@ -494,10 +494,6 @@ const Admission = () => {
                             <FileText size={16} />
                             <span>{doc}</span>
                           </div>
-                          <Button variant="ghost" size="sm">
-                            <Eye size={16} className="mr-1" />
-                            View
-                          </Button>
                         </div>
                       ))}
                     </div>

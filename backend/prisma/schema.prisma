@@ -30,6 +30,56 @@ model User {
   updatedAt     DateTime  @updatedAt
 }
 
+model StudentApplicant {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  appId       String
+  firstname   String
+  lastname    String
+  email       String @unique
+  phone       String
+  address     String
+  birthdate DateTime
+  gender      String
+  status      String
+  educationalLevel  String
+  program      String
+  Documents  Documents[]
+  createAt DateTime  @default(now())
+}
+
+model studentAdmission {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  appId       String
+  firstname   String
+  lastname    String
+  email       String @unique
+  phone       String
+  address     String
+  birthdate DateTime
+  gender      String
+  status      String
+  Documents  String[]
+}
+
+model Student {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String
+  studentName String
+  email       String
+  program     String
+  status      String
+  documents   String[]
+  academicYear  String
+  semester      String
+  subjects      String[]
+  createAt DateTime  @default(now())
+}
+
+type Documents {
+  name String
+  required Boolean
+  submitted Boolean
+}
 
 type Image {
   imageUrl    String

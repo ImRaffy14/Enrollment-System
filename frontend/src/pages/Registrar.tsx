@@ -195,6 +195,7 @@ const Registrar = () => {
       )
 
       setStudents(updatedStudents)
+      console.log(updatedStudents)
       setIsEditEnrollmentOpen(false)
       resetForm()
       setIsLoading(false)

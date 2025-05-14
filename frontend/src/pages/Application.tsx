@@ -285,10 +285,6 @@ const ApplicationRegistration = () => {
       {/* Header and Add Application Button */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Application & Registration</h2>
-        <Button className="gap-2" onClick={() => setIsAddApplicationOpen(true)}>
-          <UserPlus size={16} />
-          New Application
-        </Button>
       </div>
 
       {/* Filters */}

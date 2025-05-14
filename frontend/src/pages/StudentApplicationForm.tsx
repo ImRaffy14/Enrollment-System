@@ -25,7 +25,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 
+interface Documents {
+  name: String
+  required: Boolean
+  submitted: Boolean
+}
+
 interface FormData {
+  appId: string
   firstName: string
   lastName: string
   email: string
@@ -41,9 +48,11 @@ interface FormData {
   previousSchool: string
   educationLevel: string
   personalStatement: string
+  documents: Documents[]
 }
 
 const initialFormData: FormData = {
+  appId: "",
   firstName: "",
   lastName: "",
   email: "",
@@ -59,6 +68,11 @@ const initialFormData: FormData = {
   previousSchool: "",
   educationLevel: "",
   personalStatement: "",
+  documents: [
+      { name: "Transcript", required: true, submitted: false },
+      { name: "ID", required: true, submitted: false },
+      { name: "Recommendation Letter", required: false, submitted: false },
+  ]
 }
 
 const StudentApplicationForm: React.FC = () => {
@@ -160,8 +174,11 @@ const StudentApplicationForm: React.FC = () => {
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
       // Generate a random application ID
-      const newApplicationId = `APP-${Math.floor(100000 + Math.random() * 900000)}`
+      const newApplicationId = `APP-${Math.floor(100000 + Math.random() * 900000)}`;
       setApplicationId(newApplicationId)
+      const updatedFormData = { ...formData, appId: newApplicationId };
+      setFormData(updatedFormData);
+      console.log(updatedFormData);
 
       // Simulate successful submission
       setSubmissionStatus("success")
