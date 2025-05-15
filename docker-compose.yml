@@ -20,7 +20,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3003:3003"
+      - "3005:3005"
     env_file:
       - ./frontend/.env
     restart: unless-stopped
