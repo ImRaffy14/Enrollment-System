@@ -6,7 +6,7 @@ import registerSocketHandlers from './sockets';
 
 const PORT = process.env.PORT
 
-const allowedOrigins = ['http://localhost:3003', 'https://enrollment-sms.imraffydev.com'];
+const allowedOrigins = ['http://localhost:3003', 'https://enrollment.imraffydev.com'];
 
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {

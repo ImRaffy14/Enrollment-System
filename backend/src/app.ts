@@ -14,7 +14,7 @@ import dashboardRoutes from './routes/dashboardRoutes';
 
 const app = express();
 
-const allowedOrigins = ['http://localhost:3003', 'https://enrollment-sms.imraffydev.com'];
+const allowedOrigins = ['http://localhost:3003', 'https://enrollment.imraffydev.com'];
 
 app.use(cors({
     origin: allowedOrigins,
