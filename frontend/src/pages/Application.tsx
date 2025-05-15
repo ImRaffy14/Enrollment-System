@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Search, Filter, MoreVertical, Edit, Trash2, Eye, Loader2, FileText } from "lucide-react"
+import { Search, Filter, MoreVertical, Edit, Eye, Loader2, FileText, Check, X } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,112 +15,43 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { getStudentApplications, editStudentApplication } from "@/api/studentApplication"
 
-// Define the document status interface
-interface DocumentStatus {
+
+interface Document {
   name: string
   required: boolean
   submitted: boolean
 }
 
 interface Application {
-  id: string
-  studentName: string
-  email: string
-  phone: string
-  program: string
-  status: string
-  submittedAt: string
-  documents: DocumentStatus[]
-  previousSchool?: string
-  gender?: string
-  avatar: string
-  birthDate?: string
-  address?: string
+  id: string;
+  appId: string;
+  studentName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  birthDate: string;
+  gender: string;
+  status: string;
+  educationLevel: string;
+  program: string;
+  documents: Document[];
+  createdAt: string;
+  avatar?: string;
+  previousSchool?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  personalStatement?: string;
 }
 
-// Mock data for applications
-const mockApplications: Application[] = [
-  {
-    id: "APP001",
-    studentName: "John Smith",
-    email: "john.smith@example.com",
-    phone: "123-456-7890",
-    program: "Computer Science",
-    status: "PENDING",
-    submittedAt: "2025-05-01T10:30:00Z",
-    documents: [
-      { name: "Transcript", required: true, submitted: true },
-      { name: "ID", required: true, submitted: true },
-      { name: "Recommendation Letter", required: false, submitted: true },
-    ],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP002",
-    studentName: "Maria Garcia",
-    email: "maria.garcia@example.com",
-    phone: "234-567-8901",
-    program: "Business Administration",
-    status: "APPROVED",
-    submittedAt: "2025-05-02T09:15:00Z",
-    documents: [
-      { name: "Transcript", required: true, submitted: true },
-      { name: "ID", required: true, submitted: true },
-      { name: "Birth Certificate", required: true, submitted: false },
-    ],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP003",
-    studentName: "David Johnson",
-    email: "david.johnson@example.com",
-    phone: "345-678-9012",
-    program: "Engineering",
-    status: "REJECTED",
-    submittedAt: "2025-05-03T14:45:00Z",
-    documents: [
-      { name: "Transcript", required: true, submitted: true },
-      { name: "ID", required: true, submitted: true },
-      { name: "Portfolio", required: false, submitted: true },
-    ],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP004",
-    studentName: "Sarah Williams",
-    email: "sarah.williams@example.com",
-    phone: "456-789-0123",
-    program: "Psychology",
-    status: "PENDING",
-    submittedAt: "2025-05-04T11:20:00Z",
-    documents: [
-      { name: "Transcript", required: true, submitted: true },
-      { name: "ID", required: true, submitted: true },
-      { name: "Essay", required: false, submitted: true },
-      { name: "Birth Certificate", required: true, submitted: false },
-    ],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP005",
-    studentName: "Michael Brown",
-    email: "michael.brown@example.com",
-    phone: "567-890-1234",
-    program: "Medicine",
-    status: "PENDING",
-    submittedAt: "2025-05-05T16:10:00Z",
-    documents: [
-      { name: "Transcript", required: true, submitted: false },
-      { name: "ID", required: true, submitted: true },
-      { name: "Medical Certificate", required: true, submitted: false },
-    ],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-]
-
-const ApplicationRegistration = () => {
-  const [applications, setApplications] = useState<Application[]>(mockApplications)
+const ApplicationRegistration = () => {  
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
@@ -129,38 +60,61 @@ const ApplicationRegistration = () => {
   const [isEditApplicationOpen, setIsEditApplicationOpen] = useState(false)
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+
+  const { data: applications, isLoading } = useQuery<Application[], Error>({
+    queryKey: ["applications"],
+    queryFn: getStudentApplications,
+    staleTime: 60000,
+    gcTime: 300000,
+  })
+
+  const editMutation = useMutation({
+    mutationFn: ({ data, id }: { data: Partial<Application>, id: string }) => 
+      editStudentApplication(data, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+    },
+  });
 
   const [newApplication, setNewApplication] = useState({
+    appId: "",
     studentName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
-    program: "Computer Science",
-    address: "",
     birthDate: "",
     gender: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "",
+    program: "",
     previousSchool: "",
+    educationLevel: "",
+    personalStatement: "",
     documents: [
-      { name: "Transcript of Records", required: true, submitted: false },
-      { name: "Valid ID", required: true, submitted: false },
-      { name: "Birth Certificate", required: true, submitted: false },
-      { name: "Medical Certificate", required: false, submitted: false }
-    ] as DocumentStatus[]
+      { name: "Transcript", required: true, submitted: false },
+      { name: "ID", required: true, submitted: false },
+      { name: "Recommendation Letter", required: false, submitted: false },
+    ],
+    status: "PENDING"
   })
 
   const applicationsPerPage = 5
 
   // Filter applications based on search term and status
-  const filteredApplications = applications.filter((app) => {
+  const filteredApplications = applications?.filter((app) => {
     const matchesSearch =
-      app.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.id.toLowerCase().includes(searchTerm.toLowerCase())
+      (app.firstName?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+      (app.email?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
+      (app.appId?.toLowerCase() ?? "").includes(searchTerm.toLowerCase())
 
     const matchesStatus = selectedStatus === "All" || app.status === selectedStatus
 
     return matchesSearch && matchesStatus
-  })
+  }) ?? []
 
   // Pagination logic
   const indexOfLastApplication = currentPage * applicationsPerPage
@@ -168,75 +122,73 @@ const ApplicationRegistration = () => {
   const currentApplications = filteredApplications.slice(indexOfFirstApplication, indexOfLastApplication)
   const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage)
 
-  const handlePageChange = (pageNumber: any) => {
+  const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber)
   }
 
   const handleAddApplication = () => {
-    setIsLoading(true)
-    
     // Simulate API call
     setTimeout(() => {
-      const newId = `APP${(applications.length + 1).toString().padStart(3, '0')}`
-      const newApplicationData = {
-        ...newApplication,
-        id: newId,
-        status: "PENDING",
-        submittedAt: new Date().toISOString(),
-        avatar: "/placeholder.svg?height=40&width=40"
-      }
-      
-      setApplications([...applications, newApplicationData])
       setIsAddApplicationOpen(false)
       resetForm()
-      setIsLoading(false)
     }, 1000)
   }
 
   const handleEditApplication = () => {
-    setIsLoading(true)
+    if (!selectedApplication) return
 
-    // Simulate API call
-    setTimeout(() => {
-      const updatedApplications = applications.map((app) =>
-        app.id === selectedApplication?.id ? { ...app, ...newApplication } : app,
-      )
+    editMutation.mutate({
+      id: selectedApplication.id,
+      data: {
+        ...newApplication,
+        studentName: `${newApplication.firstName} ${newApplication.lastName}`,
+        status: newApplication.status
+      }
+    });
 
-      setApplications(updatedApplications)
-      setIsEditApplicationOpen(false)
-      resetForm()
-      setIsLoading(false)
-    }, 1000)
+    setIsEditApplicationOpen(false)
+    resetForm()
+  }
+
+  const handleStatusChange = (status: string) => {
+    setNewApplication(prev => ({
+      ...prev,
+      status: status
+    }));
   }
 
   const handleDeleteApplication = () => {
-    setIsLoading(true)
-
     // Simulate API call
     setTimeout(() => {
-      const updatedApplications = applications.filter((app) => app.id !== selectedApplication?.id)
-      setApplications(updatedApplications)
       setIsConfirmationOpen(false)
-      setIsLoading(false)
     }, 1000)
   }
 
   const resetForm = () => {
     setNewApplication({
+      appId: "",
       studentName: "",
+      firstName: "",
+      lastName: "",
       email: "",
       phone: "",
-      program: "Computer Science",
-      address: "",
       birthDate: "",
       gender: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+      program: "",
       previousSchool: "",
+      educationLevel: "",
+      personalStatement: "",
       documents: [
-        { name: "Transcript of Records", required: true, submitted: false },
-        { name: "Valid ID", required: true, submitted: false },
-        { name: "Birth Certificate", required: true, submitted: false },
-        { name: "Medical Certificate", required: false, submitted: false }
-      ]
+        { name: "Transcript", required: true, submitted: false },
+        { name: "ID", required: true, submitted: false },
+        { name: "Recommendation Letter", required: false, submitted: false },
+      ],
+      status: "PENDING"
     })
   }
 
@@ -248,22 +200,31 @@ const ApplicationRegistration = () => {
   const openEditModal = (application: Application) => {
     setSelectedApplication(application)
     setNewApplication({
-      studentName: application.studentName,
-      email: application.email,
-      phone: application.phone,
-      program: application.program,
-      address: application.address || "",
+      appId: application.appId || "",
+      studentName: application.studentName || "",
+      firstName: application.firstName || "",
+      lastName: application.lastName || "",
+      email: application.email || "",
+      phone: application.phone || "",
       birthDate: application.birthDate || "",
       gender: application.gender || "",
+      address: application.address || "",
+      city: application.city || "",
+      state: application.state || "",
+      zipCode: application.zipCode || "",
+      country: application.country || "",
+      program: application.program || "",
       previousSchool: application.previousSchool || "",
-      documents: application.documents || [],
+      educationLevel: application.educationLevel || "",
+      personalStatement: application.personalStatement || "",
+      documents: application.documents || [
+        { name: "Transcript", required: true, submitted: false },
+        { name: "ID", required: true, submitted: false },
+        { name: "Recommendation Letter", required: false, submitted: false },
+      ],
+      status: application.status || "PENDING",
     })
     setIsEditApplicationOpen(true)
-  }
-
-  const openConfirmationModal = (application: Application) => {
-    setSelectedApplication(application)
-    setIsConfirmationOpen(true)
   }
 
   const statusOptions = ["All", "PENDING", "APPROVED", "REJECTED"]
@@ -360,15 +321,15 @@ const ApplicationRegistration = () => {
             <TableBody>
               {currentApplications.map((application) => (
                 <TableRow key={application.id}>
-                  <TableCell>{application.id}</TableCell>
+                  <TableCell>{application.appId}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={application.avatar || "/placeholder.svg"} alt="avatar" />
-                        <AvatarFallback>{application.studentName.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{application.firstName?.charAt(0) || "A"}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">{application.studentName}</div>
+                        <div className="font-medium">{`${application.firstName} ${application.lastName}`}</div>
                         <div className="text-sm text-gray-500">{application.email}</div>
                       </div>
                     </div>
@@ -387,7 +348,7 @@ const ApplicationRegistration = () => {
                       {application.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(application.submittedAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(application.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -403,13 +364,6 @@ const ApplicationRegistration = () => {
                         <DropdownMenuItem className="gap-2" onClick={() => openEditModal(application)}>
                           <Edit size={16} />
                           Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="gap-2 text-red-600"
-                          onClick={() => openConfirmationModal(application)}
-                        >
-                          <Trash2 size={16} />
-                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -535,7 +489,7 @@ const ApplicationRegistration = () => {
                     </Label>
                     <Input
                       id="birthDate"
-                      type="date"
+                      type="text"
                       value={newApplication.birthDate}
                       onChange={(e) => setNewApplication({ ...newApplication, birthDate: e.target.value })}
                       required
@@ -694,7 +648,7 @@ const ApplicationRegistration = () => {
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={selectedApplication.avatar || "/placeholder.svg"} />
-                  <AvatarFallback>{selectedApplication.studentName.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{selectedApplication.studentName?.charAt(0) || "A"}</AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="text-lg font-semibold">{selectedApplication.studentName}</h3>
@@ -722,7 +676,7 @@ const ApplicationRegistration = () => {
                 </div>
                 <div>
                   <Label className="text-gray-500">Submitted Date</Label>
-                  <p>{new Date(selectedApplication.submittedAt).toLocaleDateString()}</p>
+                  <p>{new Date(selectedApplication.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <Label className="text-gray-500">Program</Label>
@@ -733,7 +687,7 @@ const ApplicationRegistration = () => {
               <div>
                 <Label className="text-gray-500">Documents</Label>
                 <div className="grid gap-2 mt-2">
-                  {selectedApplication.documents.map((doc, index) => (
+                  {selectedApplication.documents?.map((doc, index) => (
                     <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                       <div className="flex items-center gap-2">
                         <FileText size={16} />
@@ -753,18 +707,6 @@ const ApplicationRegistration = () => {
               </div>
 
               <div className="flex justify-between mt-4">
-                <div>
-                  {selectedApplication.status === "PENDING" && (
-                    <div className="flex gap-2">
-                      <Button variant="destructive" size="sm">
-                        Reject
-                      </Button>
-                      <Button variant="default" size="sm">
-                        Approve
-                      </Button>
-                    </div>
-                  )}
-                </div>
                 <Button variant="outline" onClick={() => setIsViewApplicationOpen(false)}>
                   Close
                 </Button>
@@ -774,7 +716,7 @@ const ApplicationRegistration = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Application Modal - Similar to Add but with pre-filled data */}
+      {/* Edit Application Modal */}
       <Dialog
         open={isEditApplicationOpen}
         onOpenChange={(open) => {
@@ -807,18 +749,33 @@ const ApplicationRegistration = () => {
               <TabsContent value="personal" className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-studentName">
-                      Full Name <span className="text-red-500">*</span>
+                    <Label htmlFor="edit-firstName">
+                      First Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="edit-studentName"
-                      value={newApplication.studentName}
-                      onChange={(e) => setNewApplication({ ...newApplication, studentName: e.target.value })}
-                      placeholder="John Doe"
+                      id="edit-firstName"
+                      value={newApplication.firstName}
+                      onChange={(e) => setNewApplication({ ...newApplication, firstName: e.target.value })}
+                      placeholder="John"
                       required
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-lastName">
+                      Last Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="edit-lastName"
+                      value={newApplication.lastName}
+                      onChange={(e) => setNewApplication({ ...newApplication, lastName: e.target.value })}
+                      placeholder="Doe"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-email">
                       Email <span className="text-red-500">*</span>
@@ -832,9 +789,7 @@ const ApplicationRegistration = () => {
                       required
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-phone">
                       Phone Number <span className="text-red-500">*</span>
@@ -847,7 +802,9 @@ const ApplicationRegistration = () => {
                       required
                     />
                   </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-birthDate">
                       Date of Birth <span className="text-red-500">*</span>
@@ -860,30 +817,30 @@ const ApplicationRegistration = () => {
                       required
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="edit-gender">
-                    Gender <span className="text-red-500">*</span>
-                  </Label>
-                  <RadioGroup
-                    value={newApplication.gender}
-                    onValueChange={(value) => setNewApplication({ ...newApplication, gender: value })}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="male" id="edit-male" />
-                      <Label htmlFor="edit-male">Male</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="female" id="edit-female" />
-                      <Label htmlFor="edit-female">Female</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="other" id="edit-other" />
-                      <Label htmlFor="edit-other">Other</Label>
-                    </div>
-                  </RadioGroup>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-gender">
+                      Gender <span className="text-red-500">*</span>
+                    </Label>
+                    <RadioGroup
+                      value={newApplication.gender}
+                      onValueChange={(value) => setNewApplication({ ...newApplication, gender: value })}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="male" id="edit-male" />
+                        <Label htmlFor="edit-male">Male</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="female" id="edit-female" />
+                        <Label htmlFor="edit-female">Female</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="other" id="edit-other" />
+                        <Label htmlFor="edit-other">Other</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -897,6 +854,38 @@ const ApplicationRegistration = () => {
                     placeholder="Enter your full address"
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Application Status</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={newApplication.status === "APPROVED" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleStatusChange("APPROVED")}
+                      type="button"
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button
+                      variant={newApplication.status === "REJECTED" ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={() => handleStatusChange("REJECTED")}
+                      type="button"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Reject
+                    </Button>
+                    <Button
+                      variant={newApplication.status === "PENDING" ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => handleStatusChange("PENDING")}
+                      type="button"
+                    >
+                      Pending
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
 
@@ -924,14 +913,37 @@ const ApplicationRegistration = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="edit-previousSchool">
-                    Previous School <span className="text-red-500">*</span>
+                    Previous School
                   </Label>
                   <Input
                     id="edit-previousSchool"
-                    value={newApplication.previousSchool}
+                    value={newApplication.previousSchool || ""}
                     onChange={(e) => setNewApplication({ ...newApplication, previousSchool: e.target.value })}
                     placeholder="Enter previous school name"
-                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-educationLevel">
+                    Education Level
+                  </Label>
+                  <Input
+                    id="edit-educationLevel"
+                    value={newApplication.educationLevel || ""}
+                    onChange={(e) => setNewApplication({ ...newApplication, educationLevel: e.target.value })}
+                    placeholder="Enter education level"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-personalStatement">
+                    Personal Statement
+                  </Label>
+                  <Textarea
+                    id="edit-personalStatement"
+                    value={newApplication.personalStatement || ""}
+                    onChange={(e) => setNewApplication({ ...newApplication, personalStatement: e.target.value })}
+                    placeholder="Enter personal statement"
                   />
                 </div>
               </TabsContent>
@@ -981,8 +993,8 @@ const ApplicationRegistration = () => {
               >
                 Cancel
               </Button>
-              <Button disabled={isLoading} type="submit">
-                {isLoading && <Loader2 className="animate-spin mr-2" />}
+              <Button disabled={editMutation.isPending} type="submit">
+                {editMutation.isPending && <Loader2 className="animate-spin mr-2" />}
                 Save Changes
               </Button>
             </div>

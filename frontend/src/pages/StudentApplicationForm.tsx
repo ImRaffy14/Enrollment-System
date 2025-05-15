@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { createStudentApplication } from "@/api/studentApplication"
 
 interface Documents {
   name: String
@@ -48,7 +49,8 @@ interface FormData {
   previousSchool: string
   educationLevel: string
   personalStatement: string
-  documents: Documents[]
+  documents: Documents[],
+  status: string
 }
 
 const initialFormData: FormData = {
@@ -72,7 +74,8 @@ const initialFormData: FormData = {
       { name: "Transcript", required: true, submitted: false },
       { name: "ID", required: true, submitted: false },
       { name: "Recommendation Letter", required: false, submitted: false },
-  ]
+  ],
+  status: "PENDING"
 }
 
 const StudentApplicationForm: React.FC = () => {
@@ -178,7 +181,8 @@ const StudentApplicationForm: React.FC = () => {
       setApplicationId(newApplicationId)
       const updatedFormData = { ...formData, appId: newApplicationId };
       setFormData(updatedFormData);
-      console.log(updatedFormData);
+      await createStudentApplication(updatedFormData)
+      
 
       // Simulate successful submission
       setSubmissionStatus("success")

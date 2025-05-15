@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import {
   Bell,
   FileText,
@@ -10,13 +8,15 @@ import {
   ShoppingCart,
   Calendar,
   GraduationCap,
+  Loader2
 } from "lucide-react"
-
+import { useDashboardStats, useRecentApplications, useUpcomingEvents } from "@/hooks/dashboardHooks"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { format } from "date-fns"
 
 interface EnrollmentStat {
   label: string
@@ -25,116 +25,38 @@ interface EnrollmentStat {
   icon: React.ReactNode
 }
 
-interface RecentApplication {
-  id: string
-  studentName: string
-  email: string
-  program: string
-  status: string
-  submittedAt: string
-  avatar?: string
-}
-
-interface UpcomingEvent {
-  title: string
-  date: string
-  type: "interview" | "enrollment" | "payment" | "orientation"
-}
-
 const Dashboard = () => {
+  const { data: stats, isLoading: isStatsLoading } = useDashboardStats()
+  const { data: recentApplications, isLoading: isAppsLoading } = useRecentApplications()
+  const { data: upcomingEvents, isLoading: isEventsLoading } = useUpcomingEvents()
+
   // Enrollment statistics
   const enrollmentStats: EnrollmentStat[] = [
     {
       label: "Total Applications",
-      value: "247",
-      change: "+12.5%",
+      value: stats?.totalApplications.value.toString() || "0",
+      change: stats?.totalApplications.change || "+0%",
       icon: <FileText className="h-4 w-4 text-blue-500" />,
     },
     {
       label: "Approved Admissions",
-      value: "183",
-      change: "+8.3%",
+      value: stats?.approvedAdmissions.value.toString() || "0",
+      change: stats?.approvedAdmissions.change || "+0%",
       icon: <UserCheck className="h-4 w-4 text-green-500" />,
     },
     {
       label: "Enrolled Students",
-      value: "156",
-      change: "+5.2%",
+      value: stats?.enrolledStudents.value.toString() || "0",
+      change: stats?.enrolledStudents.change || "+0%",
       icon: <BookOpen className="h-4 w-4 text-purple-500" />,
     },
     {
       label: "Supply Agreements",
-      value: "142",
-      change: "+7.1%",
+      value: stats?.supplyAgreements.value.toString() || "0",
+      change: stats?.supplyAgreements.change || "+0%",
       icon: <ShoppingCart className="h-4 w-4 text-orange-500" />,
     },
   ]
-
-  // Recent applications
-  const recentApplications: RecentApplication[] = [
-    {
-      id: "APP006",
-      studentName: "Emma Thompson",
-      email: "emma@example.com",
-      program: "Computer Science",
-      status: "PENDING",
-      submittedAt: "2025-05-12T14:30:00Z",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "APP007",
-      studentName: "James Rodriguez",
-      email: "james@example.com",
-      program: "Business Administration",
-      status: "APPROVED",
-      submittedAt: "2025-05-11T10:15:00Z",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "APP008",
-      studentName: "Olivia Chen",
-      email: "olivia@example.com",
-      program: "Psychology",
-      status: "INTERVIEW",
-      submittedAt: "2025-05-10T09:45:00Z",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: "APP009",
-      studentName: "Ethan Wilson",
-      email: "ethan@example.com",
-      program: "Engineering",
-      status: "REJECTED",
-      submittedAt: "2025-05-09T16:20:00Z",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ]
-
-  // Upcoming events
-  const upcomingEvents: UpcomingEvent[] = [
-    {
-      title: "Interview with Sarah Williams",
-      date: "2025-05-15T13:30:00Z",
-      type: "interview",
-    },
-    {
-      title: "New Student Orientation",
-      date: "2025-05-20T09:00:00Z",
-      type: "orientation",
-    },
-    {
-      title: "Payment Deadline for Engineering Students",
-      date: "2025-05-25T23:59:59Z",
-      type: "payment",
-    },
-    {
-      title: "Fall Semester Enrollment Begins",
-      date: "2025-06-01T08:00:00Z",
-      type: "enrollment",
-    },
-  ]
-
-
 
   const getEventIcon = (type: string) => {
     switch (type) {
@@ -151,6 +73,14 @@ const Dashboard = () => {
     }
   }
 
+  if (isStatsLoading || isAppsLoading || isEventsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8" />
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="flex items-center justify-between mb-6">
@@ -165,7 +95,6 @@ const Dashboard = () => {
         </AlertDescription>
       </Alert>
 
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {enrollmentStats.map((stat, index) => (
@@ -177,9 +106,6 @@ const Dashboard = () => {
             <CardContent>
               <div className="flex items-baseline justify-between">
                 <div className="text-2xl font-bold">{stat.value}</div>
-                <Badge variant={stat.change.startsWith("+") ? "default" : "destructive"} className="text-xs">
-                  {stat.change}
-                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -206,7 +132,7 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentApplications.map((application, index) => (
+                  {recentApplications?.map((application: any, index: number) => (
                     <tr key={index} className="border-b">
                       <td className="p-3">{application.id}</td>
                       <td className="p-3">
@@ -226,7 +152,7 @@ const Dashboard = () => {
                         <Badge variant="default">{application.status}</Badge>
                       </td>
                       <td className="p-3 text-sm text-gray-500">
-                        {new Date(application.submittedAt).toLocaleDateString()}
+                        {format(new Date(application.createdAt), 'MMM dd, yyyy')}
                       </td>
                     </tr>
                   ))}
@@ -252,14 +178,14 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingEvents.map((event, index) => (
+              {upcomingEvents?.map((event: any, index: number) => (
                 <div key={index} className="flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0">
                   <div className="mt-1">{getEventIcon(event.type)}</div>
                   <div>
                     <div className="font-medium">{event.title}</div>
                     <div className="text-sm text-gray-500">
-                      {new Date(event.date).toLocaleDateString()} at{" "}
-                      {new Date(event.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {format(new Date(event.date), 'MMM dd, yyyy')} at{" "}
+                      {format(new Date(event.date), 'h:mm a')}
                     </div>
                   </div>
                 </div>

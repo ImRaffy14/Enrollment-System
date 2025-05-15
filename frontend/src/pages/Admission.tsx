@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Search, Filter, MoreVertical, Edit, Eye, CheckCircle, XCircle, Loader2, FileText } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,113 +10,70 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { getStudentAdmissions, updateStudentAdmission } from '../api/studentAdmissionAPI'
+import toast from "react-hot-toast"
 
-// Add these interfaces at the top of the file, after the imports
-
-interface Applicant {
-  id: string
-  studentName: string
-  email: string
-  phone: string
-  program: string
-  status: string
-  submittedAt: string
-  documents: string[]
-  interviewDate: string | null
-  interviewScore: number | null
-  admissionNotes: string
-  avatar: string
+interface Document {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
 }
 
-// Update the mock data declaration
-const mockApplicants: Applicant[] = [
-  {
-    id: "APP001",
-    studentName: "John Smith",
-    email: "john.smith@example.com",
-    phone: "123-456-7890",
-    program: "Computer Science",
-    status: "PENDING",
-    submittedAt: "2025-05-01T10:30:00Z",
-    documents: ["Transcript", "ID", "Recommendation Letter"],
-    interviewDate: null,
-    interviewScore: null,
-    admissionNotes: "",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP002",
-    studentName: "Maria Garcia",
-    email: "maria.garcia@example.com",
-    phone: "234-567-8901",
-    program: "Business Administration",
-    status: "APPROVED",
-    submittedAt: "2025-05-02T09:15:00Z",
-    documents: ["Transcript", "ID"],
-    interviewDate: "2025-05-10T14:00:00Z",
-    interviewScore: 92,
-    admissionNotes: "Excellent candidate with strong academic background.",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP003",
-    studentName: "David Johnson",
-    email: "david.johnson@example.com",
-    phone: "345-678-9012",
-    program: "Engineering",
-    status: "REJECTED",
-    submittedAt: "2025-05-03T14:45:00Z",
-    documents: ["Transcript", "ID", "Portfolio"],
-    interviewDate: "2025-05-11T10:00:00Z",
-    interviewScore: 65,
-    admissionNotes: "Did not meet minimum requirements for the program.",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP004",
-    studentName: "Sarah Williams",
-    email: "sarah.williams@example.com",
-    phone: "456-789-0123",
-    program: "Psychology",
-    status: "INTERVIEW",
-    submittedAt: "2025-05-04T11:20:00Z",
-    documents: ["Transcript", "ID", "Essay"],
-    interviewDate: "2025-05-15T13:30:00Z",
-    interviewScore: null,
-    admissionNotes: "Scheduled for interview.",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "APP005",
-    studentName: "Michael Brown",
-    email: "michael.brown@example.com",
-    phone: "567-890-1234",
-    program: "Medicine",
-    status: "PENDING",
-    submittedAt: "2025-05-05T16:10:00Z",
-    documents: ["Transcript", "ID", "Medical Certificate"],
-    interviewDate: null,
-    interviewScore: null,
-    admissionNotes: "",
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-]
+interface Application {
+  id: string;
+  appId: string;
+  studentName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  birthdate: string;
+  gender: string;
+  status: string;
+  educationLevel: string;
+  program: string;
+  documents: Document[];
+  createdAt: string;
+  avatar?: string;
+  previousSchool?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  personalStatement?: string;
+  interviewDate?: string | null;
+  interviewScore?: number | null;
+  admissionNotes?: string;
+}
 
 const Admission = () => {
-  // Update the state declaration
-  const [applicants, setApplicants] = useState<Applicant[]>(mockApplicants)
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
   const [isViewApplicantOpen, setIsViewApplicantOpen] = useState(false)
   const [isEvaluateOpen, setIsEvaluateOpen] = useState(false)
-  // Update the selectedApplicant state
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
 
-  // Update the evaluationData state
+  // Fetch admissions data
+  const { data: applications = [], isLoading: isFetching } = useQuery<Application[]>({
+    queryKey: ['admissions'],
+    queryFn: getStudentAdmissions,
+  })
+
+  // Update admission mutation
+  const updateAdmissionMutation = useMutation({
+    mutationFn: ({ data, id }: { data: Partial<Application>; id: string }) => updateStudentAdmission(data, id),
+    onSuccess: () => {
+      toast.success("Updated Applicant")
+      queryClient.invalidateQueries({ queryKey: ['admissions'] })
+    },
+  })
+
   interface EvaluationData {
     status: string
     interviewDate: string
@@ -132,14 +88,14 @@ const Admission = () => {
     admissionNotes: "",
   })
 
-  const applicantsPerPage = 5
+  const applicationsPerPage = 5
 
-  // Filter applicants based on search term and status
-  const filteredApplicants = applicants.filter((app) => {
+  // Filter applications based on search term and status
+  const filteredApplications = applications.filter((app) => {
     const matchesSearch =
-      app.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.id.toLowerCase().includes(searchTerm.toLowerCase())
+      app.appId.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = selectedStatus === "All" || app.status === selectedStatus
 
@@ -147,40 +103,29 @@ const Admission = () => {
   })
 
   // Pagination logic
-  const indexOfLastApplicant = currentPage * applicantsPerPage
-  const indexOfFirstApplicant = indexOfLastApplicant - applicantsPerPage
-  const currentApplicants = filteredApplicants.slice(indexOfFirstApplicant, indexOfLastApplicant)
-  const totalPages = Math.ceil(filteredApplicants.length / applicantsPerPage)
+  const indexOfLastApplication = currentPage * applicationsPerPage
+  const indexOfFirstApplication = indexOfLastApplication - applicationsPerPage
+  const currentApplications = filteredApplications.slice(indexOfFirstApplication, indexOfLastApplication)
+  const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage)
 
-  // Update the handlePageChange function
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber)
   }
 
-  const handleEvaluateApplicant = () => {
-    setIsLoading(true)
+  const handleEvaluateApplication = () => {
+    if (!selectedApplication) return
 
-    // Simulate API call
-    setTimeout(() => {
-      const updatedApplicants = applicants.map((app) =>
-        app.id === selectedApplicant?.id
-          ? {
-              ...app,
-              status: evaluationData.status,
-              interviewDate: evaluationData.interviewDate || app.interviewDate,
-              interviewScore: evaluationData.interviewScore
-                ? Number.parseInt(evaluationData.interviewScore)
-                : app.interviewScore,
-              admissionNotes: evaluationData.admissionNotes,
-            }
-          : app,
-      )
+    const updateData: Partial<Application> = {
+      ...selectedApplication,
+      status: evaluationData.status,
+    };
 
-      setApplicants(updatedApplicants)
-      setIsEvaluateOpen(false)
-      resetForm()
-      setIsLoading(false)
-    }, 1000)
+    updateAdmissionMutation.mutate({ data: updateData, id: selectedApplication.id }, {
+      onSuccess: () => {
+        setIsEvaluateOpen(false)
+        resetForm()
+      }
+    })
   }
 
   const resetForm = () => {
@@ -192,28 +137,23 @@ const Admission = () => {
     })
   }
 
-  // Update the openViewModal, openEvaluateModal functions
-  const openViewModal = (applicant: Applicant) => {
-    setSelectedApplicant(applicant)
+  const openViewModal = (application: Application) => {
+    setSelectedApplication(application)
     setIsViewApplicantOpen(true)
   }
 
-  const openEvaluateModal = (applicant: Applicant) => {
-    setSelectedApplicant(applicant)
+  const openEvaluateModal = (application: Application) => {
+    setSelectedApplication(application)
     setEvaluationData({
-      status: applicant.status,
-      interviewDate: applicant.interviewDate ? new Date(applicant.interviewDate).toISOString().split("T")[0] : "",
-      interviewScore: applicant.interviewScore ? applicant.interviewScore.toString() : "",
-      admissionNotes: applicant.admissionNotes || "",
+      status: application.status,
+      interviewDate: application.interviewDate ? new Date(application.interviewDate).toISOString().split("T")[0] : "",
+      interviewScore: application.interviewScore ? application.interviewScore.toString() : "",
+      admissionNotes: application.admissionNotes || "",
     })
     setIsEvaluateOpen(true)
   }
 
   const statusOptions = ["All", "PENDING", "INTERVIEW", "APPROVED", "REJECTED"]
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, selectedStatus])
 
   return (
     <div className="space-y-6">
@@ -226,14 +166,14 @@ const Admission = () => {
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
-          <CardDescription>Narrow down applicant list</CardDescription>
+          <CardDescription>Narrow down application list</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search applicants..."
+                placeholder="Search applications..."
                 className="pl-9"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -270,92 +210,94 @@ const Admission = () => {
         </CardContent>
       </Card>
 
-      {/* Applicants Table */}
+      {/* Applications Table */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Applicants</CardTitle>
-              <CardDescription>{filteredApplicants.length} applicants found</CardDescription>
+              <CardTitle>Applications</CardTitle>
+              <CardDescription>{filteredApplications.length} applications found</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Applicant</TableHead>
-                <TableHead>Program</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Interview Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentApplicants.map((applicant) => (
-                <TableRow key={applicant.id}>
-                  <TableCell>{applicant.id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={applicant.avatar || "/placeholder.svg"} alt="avatar" />
-                        <AvatarFallback>{applicant.studentName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{applicant.studentName}</div>
-                        <div className="text-sm text-gray-500">{applicant.email}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{applicant.program}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        applicant.status === "APPROVED"
-                          ? "default"
-                          : applicant.status === "REJECTED"
-                            ? "destructive"
-                            : applicant.status === "INTERVIEW"
-                              ? "default"
-                              : "outline"
-                      }
-                    >
-                      {applicant.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {applicant.interviewDate ? new Date(applicant.interviewDate).toLocaleDateString() : "Not scheduled"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical size={16} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2" onClick={() => openViewModal(applicant)}>
-                          <Eye size={16} />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2" onClick={() => openEvaluateModal(applicant)}>
-                          <Edit size={16} />
-                          Evaluate
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isFetching ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="animate-spin h-8 w-8" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Application ID</TableHead>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {currentApplications.map((application) => (
+                  <TableRow key={application.id}>
+                    <TableCell>{application.appId}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={application.avatar || "/placeholder.svg"} alt="avatar" />
+                          <AvatarFallback>
+                            {application.firstName?.charAt(0)}{application.lastName?.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{`${application.firstName} ${application.lastName}`}</div>
+                          <div className="text-sm text-gray-500">{application.email}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          application.status === "APPROVED"
+                            ? "default"
+                            : application.status === "REJECTED"
+                              ? "destructive"
+                              : application.status === "INTERVIEW"
+                                ? "default"
+                                : "outline"
+                        }
+                      >
+                        {application.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical size={16} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="gap-2" onClick={() => openViewModal(application)}>
+                            <Eye size={16} />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => openEvaluateModal(application)}>
+                            <Edit size={16} />
+                            Evaluate
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between">
           <div className="text-sm text-gray-500">
-            Showing {Math.min((currentPage - 1) * applicantsPerPage + 1, filteredApplicants.length)} to{" "}
-            {Math.min(currentPage * applicantsPerPage, filteredApplicants.length)} of {filteredApplicants.length}{" "}
-            applicants
+            Showing {Math.min((currentPage - 1) * applicationsPerPage + 1, filteredApplications.length)} to{" "}
+            {Math.min(currentPage * applicationsPerPage, filteredApplications.length)} of {filteredApplications.length}{" "}
+            applications
           </div>
           <div className="flex gap-1">
             <Button
@@ -388,54 +330,55 @@ const Admission = () => {
         </CardFooter>
       </Card>
 
-      {/* View Applicant Modal */}
+      {/* View Application Modal */}
       <Dialog
         open={isViewApplicantOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedApplicant(null)
+            setSelectedApplication(null)
           }
           setIsViewApplicantOpen(open)
         }}
       >
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Applicant Details</DialogTitle>
-            <DialogDescription>View detailed information about this applicant.</DialogDescription>
+            <DialogTitle>Application Details</DialogTitle>
+            <DialogDescription>View detailed information about this application.</DialogDescription>
           </DialogHeader>
 
-          {selectedApplicant && (
+          {selectedApplication && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={selectedApplicant.avatar || "/placeholder.svg"} />
-                  <AvatarFallback>{selectedApplicant.studentName.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={selectedApplication.avatar || "/placeholder.svg"} />
+                  <AvatarFallback>
+                    {selectedApplication.firstName?.charAt(0)}{selectedApplication.lastName?.charAt(0)}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-semibold">{selectedApplicant.studentName}</h3>
-                  <p className="text-sm text-gray-500">{selectedApplicant.email}</p>
-                  <p className="text-sm text-gray-500">{selectedApplicant.phone}</p>
+                  <h3 className="text-lg font-semibold">{selectedApplication.studentName}</h3>
+                  <p className="text-sm text-gray-500">{selectedApplication.email}</p>
+                  <p className="text-sm text-gray-500">{selectedApplication.phone}</p>
                 </div>
                 <Badge
                   className="ml-auto"
                   variant={
-                    selectedApplicant.status === "APPROVED"
+                    selectedApplication.status === "APPROVED"
                       ? "default"
-                      : selectedApplicant.status === "REJECTED"
+                      : selectedApplication.status === "REJECTED"
                         ? "destructive"
-                        : selectedApplicant.status === "INTERVIEW"
+                        : selectedApplication.status === "INTERVIEW"
                           ? "default"
                           : "outline"
                   }
                 >
-                  {selectedApplicant.status}
+                  {selectedApplication.status}
                 </Badge>
               </div>
 
               <Tabs defaultValue="application" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="application">Application Info</TabsTrigger>
-                  <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
                 </TabsList>
 
@@ -443,44 +386,42 @@ const Admission = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-gray-500">Application ID</Label>
-                      <p className="font-medium">{selectedApplicant.id}</p>
+                      <p className="font-medium">{selectedApplication.appId}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Submitted Date</Label>
-                      <p className="font-medium">{new Date(selectedApplicant.submittedAt).toLocaleDateString()}</p>
+                      <p className="font-medium">{new Date(selectedApplication.createdAt).toLocaleDateString()}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Program</Label>
-                      <p className="font-medium">{selectedApplicant.program}</p>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="evaluation" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-gray-500">Interview Date</Label>
-                      <p className="font-medium">
-                        {selectedApplicant.interviewDate
-                          ? new Date(selectedApplicant.interviewDate).toLocaleDateString()
-                          : "Not scheduled"}
-                      </p>
+                      <p className="font-medium">{selectedApplication.program}</p>
                     </div>
                     <div>
-                      <Label className="text-gray-500">Interview Score</Label>
-                      <p className="font-medium">
-                        {selectedApplicant.interviewScore !== null
-                          ? `${selectedApplicant.interviewScore}/100`
-                          : "Not evaluated"}
-                      </p>
+                      <Label className="text-gray-500">Education Level</Label>
+                      <p className="font-medium">{selectedApplication.educationLevel}</p>
                     </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-gray-500">Admission Notes</Label>
-                    <p className="mt-1 p-2 border rounded-md min-h-[100px]">
-                      {selectedApplicant.admissionNotes || "No notes available."}
-                    </p>
+                    <div>
+                      <Label className="text-gray-500">Gender</Label>
+                      <p className="font-medium">{selectedApplication.gender}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">Birth Date</Label>
+                      <p className="font-medium">{selectedApplication.birthdate}</p>
+                    </div>
+                    {selectedApplication.previousSchool && (
+                      <div>
+                        <Label className="text-gray-500">Previous School</Label>
+                        <p className="font-medium">{selectedApplication.previousSchool}</p>
+                      </div>
+                    )}
+                    {selectedApplication.personalStatement && (
+                      <div className="col-span-2">
+                        <Label className="text-gray-500">Personal Statement</Label>
+                        <p className="mt-1 p-2 border rounded-md min-h-[100px]">
+                          {selectedApplication.personalStatement}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -488,12 +429,20 @@ const Admission = () => {
                   <div className="space-y-2">
                     <Label>Submitted Documents</Label>
                     <div className="grid gap-2">
-                      {selectedApplicant.documents.map((doc, index) => (
-                        <div key={index} className="flex items-center justify-between gap-2 p-3 border rounded-md">
+                      {selectedApplication.documents.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between gap-2 p-3 border rounded-md">
                           <div className="flex items-center gap-2">
                             <FileText size={16} />
-                            <span>{doc}</span>
+                            <span>{doc.name} ({doc.type})</span>
                           </div>
+                          <a 
+                            href={doc.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-500 hover:underline"
+                          >
+                            View
+                          </a>
                         </div>
                       ))}
                     </div>
@@ -503,14 +452,14 @@ const Admission = () => {
 
               <div className="flex justify-between mt-4">
                 <div>
-                  {selectedApplicant.status === "PENDING" && (
+                  {selectedApplication.status === "PENDING" && (
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
                           setIsViewApplicantOpen(false)
-                          openEvaluateModal(selectedApplicant)
+                          openEvaluateModal(selectedApplication)
                         }}
                       >
                         Schedule Interview
@@ -527,12 +476,12 @@ const Admission = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Evaluate Applicant Modal */}
+      {/* Evaluate Application Modal */}
       <Dialog
         open={isEvaluateOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setSelectedApplicant(null)
+            setSelectedApplication(null)
             resetForm()
           }
           setIsEvaluateOpen(open)
@@ -540,14 +489,14 @@ const Admission = () => {
       >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Evaluate Applicant</DialogTitle>
-            <DialogDescription>Update admission status for {selectedApplicant?.studentName}.</DialogDescription>
+            <DialogTitle>Evaluate Application</DialogTitle>
+            <DialogDescription>Update admission status for {selectedApplication?.studentName}.</DialogDescription>
           </DialogHeader>
 
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              handleEvaluateApplicant()
+              handleEvaluateApplication()
             }}
           >
             <div className="space-y-4 py-4">
@@ -564,15 +513,6 @@ const Admission = () => {
                   >
                     <div className="size-4 rounded-full border border-current" />
                     Pending
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={evaluationData.status === "INTERVIEW" ? "default" : "outline"}
-                    className="justify-start gap-2"
-                    onClick={() => setEvaluationData({ ...evaluationData, status: "INTERVIEW" })}
-                  >
-                    <div className="size-4 rounded-full border border-current" />
-                    Interview
                   </Button>
                   <Button
                     type="button"
@@ -594,40 +534,6 @@ const Admission = () => {
                   </Button>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="interviewDate">Interview Date</Label>
-                <Input
-                  id="interviewDate"
-                  type="date"
-                  value={evaluationData.interviewDate}
-                  onChange={(e) => setEvaluationData({ ...evaluationData, interviewDate: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="interviewScore">Interview Score (0-100)</Label>
-                <Input
-                  id="interviewScore"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={evaluationData.interviewScore}
-                  onChange={(e) => setEvaluationData({ ...evaluationData, interviewScore: e.target.value })}
-                  placeholder="Enter score"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="admissionNotes">Admission Notes</Label>
-                <Textarea
-                  id="admissionNotes"
-                  value={evaluationData.admissionNotes}
-                  onChange={(e) => setEvaluationData({ ...evaluationData, admissionNotes: e.target.value })}
-                  placeholder="Enter notes about the applicant"
-                  rows={4}
-                />
-              </div>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -641,8 +547,8 @@ const Admission = () => {
               >
                 Cancel
               </Button>
-              <Button disabled={isLoading} type="submit">
-                {isLoading && <Loader2 className="animate-spin mr-2" />}
+              <Button disabled={updateAdmissionMutation.isPending} type="submit">
+                {updateAdmissionMutation.isPending && <Loader2 className="animate-spin mr-2" />}
                 Save Evaluation
               </Button>
             </div>

@@ -1,6 +1,11 @@
-
 import { useState, useEffect } from "react"
-import { Search, Filter, MoreVertical, Edit, Trash2, Eye, Download, Loader2, FileText } from "lucide-react"
+import { Search, Filter, MoreVertical, Edit, Trash2, Eye, Loader2, FileText } from "lucide-react"
+import { 
+  useStudents, 
+  useUpdateStudent,
+  useUpdateStudentStatus
+} from "@/hooks/studentHooks"
+import { format } from "date-fns"
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,18 +19,23 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// Define types
+type Documents = {
+  name: string
+  required: boolean
+  submitted: boolean
+}
+
 type Student = {
   id: string;
   studentName: string;
   email: string;
   studentId: string;
   program: string;
-  enrollmentStatus: "ENROLLED" | "PENDING" | "DROPPED";
-  registrationDate: string;
+  status: "ENROLLED" | "PENDING" | "DROPPED";
+  createdAt: string;
   academicYear: string;
   semester: string;
-  documents: string[];
+  documents: Documents[];
   subjects: string[];
   avatar: string;
 };
@@ -38,87 +48,12 @@ type Subject = {
 };
 
 type EnrollmentData = {
-  enrollmentStatus: "ENROLLED" | "PENDING" | "DROPPED" | "";
+  status: "ENROLLED" | "PENDING" | "DROPPED" | "";
   subjects: string[];
   academicYear: string;
   semester: string;
 };
 
-// Mock data for students
-const mockStudents: Student[] = [
-  {
-    id: "STU001",
-    studentName: "John Smith",
-    email: "john.smith@example.com",
-    studentId: "2025-CS-001",
-    program: "Computer Science",
-    enrollmentStatus: "ENROLLED",
-    registrationDate: "2025-05-01T10:30:00Z",
-    academicYear: "2025-2026",
-    semester: "First",
-    documents: ["Enrollment Form", "Registration Card", "Payment Receipt"],
-    subjects: ["CS101", "MATH201", "ENG101"],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "STU002",
-    studentName: "Maria Garcia",
-    email: "maria.garcia@example.com",
-    studentId: "2025-BA-002",
-    program: "Business Administration",
-    enrollmentStatus: "PENDING",
-    registrationDate: "2025-05-02T09:15:00Z",
-    academicYear: "2025-2026",
-    semester: "First",
-    documents: ["Enrollment Form"],
-    subjects: ["BA101", "ECON201", "MKT101"],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "STU003",
-    studentName: "David Johnson",
-    email: "david.johnson@example.com",
-    studentId: "2025-ENG-003",
-    program: "Engineering",
-    enrollmentStatus: "ENROLLED",
-    registrationDate: "2025-05-03T14:45:00Z",
-    academicYear: "2025-2026",
-    semester: "First",
-    documents: ["Enrollment Form", "Registration Card", "Payment Receipt"],
-    subjects: ["ENG101", "PHYS201", "MATH301"],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "STU004",
-    studentName: "Sarah Williams",
-    email: "sarah.williams@example.com",
-    studentId: "2025-PSY-004",
-    program: "Psychology",
-    enrollmentStatus: "DROPPED",
-    registrationDate: "2025-05-04T11:20:00Z",
-    academicYear: "2025-2026",
-    semester: "First",
-    documents: ["Enrollment Form", "Drop Form"],
-    subjects: [],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "STU005",
-    studentName: "Michael Brown",
-    email: "michael.brown@example.com",
-    studentId: "2025-MED-005",
-    program: "Medicine",
-    enrollmentStatus: "ENROLLED",
-    registrationDate: "2025-05-05T16:10:00Z",
-    academicYear: "2025-2026",
-    semester: "First",
-    documents: ["Enrollment Form", "Registration Card", "Payment Receipt", "Medical Certificate"],
-    subjects: ["MED101", "BIO201", "CHEM301"],
-    avatar: "/placeholder.svg?height=40&width=40",
-  },
-]
-
-// Mock data for available subjects
 const mockSubjects: Subject[] = [
   { code: "CS101", name: "Introduction to Computer Science", units: 3, schedule: "MWF 9:00-10:30 AM" },
   { code: "MATH201", name: "Calculus I", units: 4, schedule: "TTh 10:30-12:00 PM" },
@@ -134,7 +69,10 @@ const mockSubjects: Subject[] = [
 ]
 
 const Registrar = () => {
-  const [students, setStudents] = useState<Student[]>(mockStudents)
+  const { data: students = [], isLoading: isFetching } = useStudents()
+  const { mutate: updateStudent, isPending: isUpdating } = useUpdateStudent()
+  const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateStudentStatus()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
@@ -142,10 +80,9 @@ const Registrar = () => {
   const [isEditEnrollmentOpen, setIsEditEnrollmentOpen] = useState(false)
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
 
   const [enrollmentData, setEnrollmentData] = useState<EnrollmentData>({
-    enrollmentStatus: "",
+    status: "",
     subjects: [],
     academicYear: "",
     semester: "",
@@ -154,13 +91,13 @@ const Registrar = () => {
   const studentsPerPage = 5
 
   // Filter students based on search term and status
-  const filteredStudents = students.filter((student) => {
+  const filteredStudents = students.filter((student: any) => {
     const matchesSearch =
       student.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = selectedStatus === "All" || student.enrollmentStatus === selectedStatus
+    const matchesStatus = selectedStatus === "All" || student.status === selectedStatus
 
     return matchesSearch && matchesStatus
   })
@@ -178,56 +115,38 @@ const Registrar = () => {
   const handleEditEnrollment = () => {
     if (!selectedStudent) return
     
-    setIsLoading(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      const updatedStudents = students.map((student) =>
-        student.id === selectedStudent.id
-          ? {
-              ...student,
-              enrollmentStatus: enrollmentData.enrollmentStatus as "ENROLLED" | "PENDING" | "DROPPED",
-              subjects: enrollmentData.subjects,
-              academicYear: enrollmentData.academicYear,
-              semester: enrollmentData.semester,
-            }
-          : student,
-      )
-
-      setStudents(updatedStudents)
-      console.log(updatedStudents)
-      setIsEditEnrollmentOpen(false)
-      resetForm()
-      setIsLoading(false)
-    }, 1000)
+    updateStudent({
+      id: selectedStudent.id,
+      data: {
+        status: enrollmentData.status,
+        subjects: enrollmentData.subjects,
+        academicYear: enrollmentData.academicYear,
+        semester: enrollmentData.semester
+      }
+    }, {
+      onSuccess: () => {
+        setIsEditEnrollmentOpen(false)
+        resetForm()
+      }
+    })
   }
 
   const handleDropEnrollment = () => {
     if (!selectedStudent) return
     
-    setIsLoading(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      const updatedStudents = students.map((student) =>
-        student.id === selectedStudent.id
-          ? {
-              ...student,
-              enrollmentStatus: "DROPPED",
-              subjects: [],
-            }
-          : student,
-      )
-
-      setStudents(updatedStudents as Student[])
-      setIsConfirmationOpen(false)
-      setIsLoading(false)
-    }, 1000)
+    updateStatus({
+      id: selectedStudent.id,
+      status: "DROPPED"
+    }, {
+      onSuccess: () => {
+        setIsConfirmationOpen(false)
+      }
+    })
   }
 
   const resetForm = () => {
     setEnrollmentData({
-      enrollmentStatus: "",
+      status: "",
       subjects: [],
       academicYear: "",
       semester: "",
@@ -242,7 +161,7 @@ const Registrar = () => {
   const openEditModal = (student: Student) => {
     setSelectedStudent(student)
     setEnrollmentData({
-      enrollmentStatus: student.enrollmentStatus,
+      status: student.status,
       subjects: student.subjects || [],
       academicYear: student.academicYear || "2025-2026",
       semester: student.semester || "First",
@@ -262,6 +181,14 @@ const Registrar = () => {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, selectedStatus])
+
+  if (isFetching) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin h-8 w-8" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -341,7 +268,7 @@ const Registrar = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentStudents.map((student) => (
+              {currentStudents.map((student: any) => (
                 <TableRow key={student.id}>
                   <TableCell>{student.studentId}</TableCell>
                   <TableCell>
@@ -360,17 +287,17 @@ const Registrar = () => {
                   <TableCell>
                     <Badge
                       variant={
-                        student.enrollmentStatus === "ENROLLED"
+                        student.status === "ENROLLED"
                           ? "default"
-                          : student.enrollmentStatus === "DROPPED"
+                          : student.status === "DROPPED"
                             ? "destructive"
                             : "outline"
                       }
                     >
-                      {student.enrollmentStatus}
+                      {student.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{new Date(student.registrationDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{format(new Date(student.createdAt), 'MMM dd, yyyy')}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -387,7 +314,7 @@ const Registrar = () => {
                           <Edit size={16} />
                           Edit Enrollment
                         </DropdownMenuItem>
-                        {student.enrollmentStatus !== "DROPPED" && (
+                        {student.status !== "DROPPED" && (
                           <DropdownMenuItem
                             className="gap-2 text-red-600"
                             onClick={() => openConfirmationModal(student)}
@@ -441,15 +368,7 @@ const Registrar = () => {
       </Card>
 
       {/* View Student Modal */}
-      <Dialog
-        open={isViewStudentOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedStudent(null)
-          }
-          setIsViewStudentOpen(open)
-        }}
-      >
+      <Dialog open={isViewStudentOpen} onOpenChange={setIsViewStudentOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>Student Details</DialogTitle>
@@ -471,14 +390,14 @@ const Registrar = () => {
                 <Badge
                   className="ml-auto"
                   variant={
-                    selectedStudent.enrollmentStatus === "ENROLLED"
+                    selectedStudent.status === "ENROLLED"
                       ? "default"
-                      : selectedStudent.enrollmentStatus === "DROPPED"
+                      : selectedStudent.status === "DROPPED"
                         ? "destructive"
                         : "outline"
                   }
                 >
-                  {selectedStudent.enrollmentStatus}
+                  {selectedStudent.status}
                 </Badge>
               </div>
 
@@ -497,7 +416,7 @@ const Registrar = () => {
                     </div>
                     <div>
                       <Label className="text-gray-500">Registration Date</Label>
-                      <p className="font-medium">{new Date(selectedStudent.registrationDate).toLocaleDateString()}</p>
+                      <p className="font-medium">{format(new Date(selectedStudent.createdAt), 'MMM dd, yyyy')}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Academic Year</Label>
@@ -548,12 +467,8 @@ const Registrar = () => {
                         <div key={index} className="flex items-center justify-between gap-2 p-3 border rounded-md">
                           <div className="flex items-center gap-2">
                             <FileText size={16} />
-                            <span>{doc}</span>
+                            <span>{doc.name}</span>
                           </div>
-                          <Button variant="ghost" size="sm">
-                            <Download size={16} className="mr-1" />
-                            Download
-                          </Button>
                         </div>
                       ))}
                     </div>
@@ -572,39 +487,28 @@ const Registrar = () => {
       </Dialog>
 
       {/* Edit Enrollment Modal */}
-      <Dialog
-        open={isEditEnrollmentOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedStudent(null)
-            resetForm()
-          }
-          setIsEditEnrollmentOpen(open)
-        }}
-      >
+      <Dialog open={isEditEnrollmentOpen} onOpenChange={setIsEditEnrollmentOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>Edit Enrollment</DialogTitle>
             <DialogDescription>Update enrollment details for {selectedStudent?.studentName}.</DialogDescription>
           </DialogHeader>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleEditEnrollment()
-            }}
-          >
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            handleEditEnrollment()
+          }}>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="enrollmentStatus">
+                  <Label htmlFor="status">
                     Enrollment Status <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={enrollmentData.enrollmentStatus}
-                    onValueChange={(value) => setEnrollmentData({ ...enrollmentData, enrollmentStatus: value as "ENROLLED" | "PENDING" | "DROPPED" | "" })}
+                    value={enrollmentData.status}
+                    onValueChange={(value) => setEnrollmentData({ ...enrollmentData, status: value as "ENROLLED" | "PENDING" | "DROPPED" })}
                   >
-                    <SelectTrigger id="enrollmentStatus">
+                    <SelectTrigger id="status">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -711,8 +615,8 @@ const Registrar = () => {
               >
                 Cancel
               </Button>
-              <Button disabled={isLoading} type="submit">
-                {isLoading && <Loader2 className="animate-spin mr-2" />}
+              <Button disabled={isUpdating} type="submit">
+                {isUpdating && <Loader2 className="animate-spin mr-2" />}
                 Save Changes
               </Button>
             </div>
@@ -721,15 +625,7 @@ const Registrar = () => {
       </Dialog>
 
       {/* Confirmation Modal */}
-      <Dialog
-        open={isConfirmationOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedStudent(null)
-          }
-          setIsConfirmationOpen(open)
-        }}
-      >
+      <Dialog open={isConfirmationOpen} onOpenChange={setIsConfirmationOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Drop Enrollment</DialogTitle>
@@ -742,8 +638,12 @@ const Registrar = () => {
             <Button variant="outline" onClick={() => setIsConfirmationOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDropEnrollment} disabled={isLoading}>
-              {isLoading && <Loader2 className="animate-spin mr-2" />}
+            <Button 
+              variant="destructive" 
+              onClick={handleDropEnrollment} 
+              disabled={isUpdatingStatus}
+            >
+              {isUpdatingStatus && <Loader2 className="animate-spin mr-2" />}
               Drop Enrollment
             </Button>
           </div>

@@ -33,46 +33,47 @@ model User {
 model StudentApplicant {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
   appId       String
-  firstname   String
-  lastname    String
+  firstName   String
+  lastName    String
   email       String @unique
   phone       String
   address     String
-  birthdate DateTime
+  birthDate   String
   gender      String
   status      String
-  educationalLevel  String
+  educationLevel  String
   program      String
-  Documents  Documents[]
-  createAt DateTime  @default(now())
+  documents  Documents[]
+  createdAt DateTime  @default(now())
 }
 
 model studentAdmission {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
   appId       String
-  firstname   String
-  lastname    String
+  firstName   String
+  lastName    String
   email       String @unique
   phone       String
-  address     String
-  birthdate DateTime
+  birthdate   String
   gender      String
   status      String
-  Documents  String[]
+  documents  Documents[]
+  program     String
+  createdAt DateTime  @default(now())
 }
 
 model Student {
-  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   studentId   String
   studentName String
   email       String
   program     String
-  status      String
-  documents   String[]
-  academicYear  String
-  semester      String
-  subjects      String[]
-  createAt DateTime  @default(now())
+  status      String   @default("PENDING")
+  documents   Documents[]
+  academicYear String
+  semester    String
+  subjects    String[]
+  createdAt   DateTime @default(now())
 }
 
 type Documents {
