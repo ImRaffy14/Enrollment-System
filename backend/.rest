@@ -1,4 +1,4 @@
 ### Get Users
 ##
-GET http://localhost:5002/api/admissions
+GET http://localhost:5002/api/student
 Content-Type: application/json

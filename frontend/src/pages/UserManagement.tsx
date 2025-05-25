@@ -1,3 +1,5 @@
+"use client"
+
 import type React from "react"
 
 import { UserPlus, Search, Filter, MoreVertical, Edit, Trash2, Eye, X, ImageIcon, Loader2, Key } from "lucide-react"
@@ -63,6 +65,7 @@ const UserManagement = () => {
   const {
     data: usersData,
     isLoading,
+    isError,
     refetch,
   } = useQuery<User[], Error>({
     queryKey: ["users"],
@@ -289,10 +292,6 @@ const UserManagement = () => {
       {/* Header and Add User Button */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">User Management</h2>
-        <Button className="gap-2" onClick={() => setIsAddUserOpen(true)}>
-          <UserPlus size={16} />
-          Add User
-        </Button>
       </div>
 
       {/* Filters */}
@@ -349,7 +348,6 @@ const UserManagement = () => {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Users</CardTitle>
-              <CardDescription>{totalItems} users found</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -363,53 +361,53 @@ const UserManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={user.image.imageUrl} alt="avatar" />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+              {currentUsers
+                .filter((user: any) => user.department === "EMS")
+                .map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage src={user.image.imageUrl} alt="avatar" />
+                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.role === "ADMIN" ? "default" : user.role === "USER" ? "secondary" : "outline"}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical size={16} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2" onClick={() => openViewModal(user)}>
-                          <Eye size={16} />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2" onClick={() => openEditModal(user)}>
-                          <Edit size={16} />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2" onClick={() => openChangePasswordModal(user)}>
-                          <Key size={16} />
-                          Change Password
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-red-600" onClick={() => openConfirmationModal(user)}>
-                          <Trash2 size={16} />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{user.role}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical size={16} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="gap-2" onClick={() => openViewModal(user)}>
+                            <Eye size={16} />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => openEditModal(user)}>
+                            <Edit size={16} />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2" onClick={() => openChangePasswordModal(user)}>
+                            <Key size={16} />
+                            Change Password
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2 text-red-600" onClick={() => openConfirmationModal(user)}>
+                            <Trash2 size={16} />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
               ))}
             </TableBody>
           </Table>

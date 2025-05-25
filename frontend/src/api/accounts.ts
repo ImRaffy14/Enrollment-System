@@ -5,7 +5,7 @@ const urlAPI = import.meta.env.VITE_SERVER_URL
 
 export const getUsers = async () => {
     try {
-        const result = await axios.get(`${urlAPI}/api/account/users`)
+        const result = await axios.get(`https://sms-backend.imraffydev.com/api/account/users`)
         return result.data.user
     } catch (error) {
         const axiosError = error as AxiosError<ErrorResponse>
