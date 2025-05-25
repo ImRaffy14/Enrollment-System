@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { UserPlus, Search, Filter, MoreVertical, Edit, Trash2, Eye, X, ImageIcon, Loader2, Key } from "lucide-react"
+import { Search, Filter, MoreVertical, Edit, Trash2, Eye, X, ImageIcon, Loader2, Key } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import Cropper from "react-cropper"
 import "cropperjs/dist/cropper.css"
